@@ -1,0 +1,177 @@
+Connectivity between Django and PostgreSQL:
+	1)Setting up PostgreSql
+	2)Setting up Django
+	3)Connectivity between Django and Porstgresql
+	4)Django REST API
+
+1)Setting up PostgreSQL:
+	# Go to the official PostgreSQL website:
+		# https://www.postgresql.org/download/windows/
+	# Click "Download the Installer" (redirects to EDB website).
+	# Choose the latest version and your Windows architecture (64-bit recommended).
+
+	# Run the Installer:
+		# Open the downloaded .exe file.
+		# Click Next to proceed with the installation.
+		# Select Components
+
+		# Keep the default selection (PostgreSQL Server, pgAdmin, Stack Builder).
+		# Click Next.
+
+	# Choose Installation Directory:
+		# Select where PostgreSQL will be installed or keep the default location.
+		# Click Next.
+
+	# Set a Password for the PostgreSQL User:
+		Enter a strong password for the superuser (postgres).
+		Remember this password; you’ll need it to log in.
+		Click Next.
+	
+	# Choose Port Number:
+		# Default port is 5432 (keep it unless needed).
+		# Click Next.
+	
+	# Finish the Installation
+		# Click Next → Finish after installation.
+		
+3)Setting up Django:
+	# What is it:
+		# Python web framework
+		# Follows Model View Template(MVT) architecture.
+		# Easy to develop, high security, high scalability.
+		# Has ORM(Object Relational Mapping) -> Database interaction.
+
+	# What is MVT?
+		# Similar to MVC (Model View Controller).
+		# Model -> Defines Database Structure
+		# View -> Handles logics
+		# Template -> Controls frontend
+	
+	# Flow of Django and Database:
+		# Request -> Django API ->Django -> Database -> sends the data to Django -> Django converts the data into JASON -> Django API -> User
+
+	# Why Django:
+		# Compared to other frameworks(flask, tornado, pyramid) it as high security, more features, can handle large projects, high scalability.
+	
+	# Setup:
+		# need Python and pip
+		# Create a main folder for the project.
+		# Here we need to create a virtual environment(venv)
+		# open terminal and run the following code in the project folder path:
+			python -m venv env
+		# This creates a folder in the name of env which have all the dependencies for the virtual environment.
+		# To activate the virtual environment enter the following code:
+			env\Scripts\activate
+		# Now that the venv is activated we can install the Django.
+		# to install it enter the code:
+			pip install Django
+			# verify it by checking its version -> django-admin --version
+		# Create a new Django project using the following command:
+			django-admin startproject projectname
+		# Now in the terminal move the the project folder and do the initial migrations(its for setting up auth, sessions, admin panel and etc..):
+			python manage.py migrate
+		# Now start the server:
+			python manage.py runserver
+		# Check the status using the following url(type it in the browser):
+			http://127.0.0.1:8000/
+	
+3)Connectivity between Django and Porstgresql:
+	# Create a Database
+	# Create a user in the created database:
+		create user username with password '______';
+	# Give user access to database:
+		alter role username set client_encoding to 'utf8';
+		alter role username set default transaction_isolation to 'read comitted';
+		alter role username set timezone to 'UTC';
+		grant all privileges on database databasename to username;
+	# By following all the above commands you will be creating a user with all permissions.
+	# Now in the Project directtory go to settings.py.
+	# In the database section change the dictionary named default:
+		DATABASES = {
+    			'default': {
+        			'ENGINE': 'django.db.backends.postgresql',
+        			'NAME': 'database name',
+        			'USER': 'user name',
+        			'PASSWORD': 'password',
+        			'HOST': 'localhost',  # If running PostgreSQL locally
+        			'PORT': '5432',       # Default PostgreSQL port
+    			}
+		}
+	# Migrate the django.
+	# run the server for verification.
+
+4)Django REST API:
+	# Installation:
+		# follow the code:
+			pip install djangorestframework
+		# Check installation:
+			python -m Django --version
+	# In settings.py add 'rest_framework' in he installed apps section.
+	# Ensure psycopg installed if not:
+		pip install psycopg[binary]
+	# Migrate the changes:
+		python manage.py migrate
+
+	# Superuser creation:
+		python mange.py createsuperuser
+	# Create an API app.
+		python manage.py startapp appname
+		# in installed apps in settings.py add 'appname'
+
+	# Create models(table) in models.py:
+		from django.db import models
+
+		class Product(models.Model):
+   			name = models.CharField(max_length=100)
+    			description = models.TextField()
+    			price = models.DecimalField(max_digits=10, decimal_places=2)
+    			stock = models.IntegerField()
+
+    			def __str__(self):
+        			return self.name
+
+		# Descriptions:
+			name → A text field for the product name.
+			description → A longer text field.
+			price → A decimal field for pricing.
+			stock → An integer for stock count	
+			
+	# After creating model apply migrations:
+		python manage.py makemigrations
+		python manage.py migrate
+	
+	# Register model in admin.py:
+		from django.contrib import admin
+		from .models import Product
+		admin.site.register(Product)
+	
+	# Serialize the created model:
+		# This process is to convert the datas in the model into json format.
+		# Create a file named serializers.py in api.
+		# Follow the below code.
+			from rest_framework import serializers
+			from .models import Product  # Import your Product model
+
+			class ProductSerializer(serializers.ModelSerializer):
+    				class Meta:
+       					model = Product  # Link it to the Product model
+        				fields = '__all__'  # Serialize all fields
+		# Description:
+			serializers.ModelSerializer: Automatically creates fields for the Product model.
+			model = Product: Tells Django which model to serialize.
+			fields = '__all__': Includes all fields of the Product model.
+
+	# Create Api view with Django REST Framework with crud operations:
+		Step 1: Go to views.py inside the api folder and update it with:
+			
+			
+							
+		
+		Step 2: Inside urls.py in api:
+
+
+		Step 3: Inside project folder urls.py:							
+								
+									
+																
+																																																																																																																																																																																																																																																																																																																																																																																								
