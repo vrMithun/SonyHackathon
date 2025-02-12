@@ -1,6 +1,6 @@
 import { ThemeProvider } from "@/components/contexts/ThemeProvider"
 import type { Metadata } from "next"
-
+import "@/styles/global.css"
 import { Navbar } from "@/components/navbar"
 
 export const metadata: Metadata = {
