@@ -1,15 +1,15 @@
 import argparse
 import time
 import requests
-from functools import lru_cache
 import cv2
+from functools import lru_cache
 from picamera2 import MappedArray, Picamera2
 from picamera2.devices.imx500 import IMX500
 
 last_detections = []
 SERVER_URL = "http://0.0.0.0:5000/qr-data"  
 LABEL = "qr-code"  
-CONFIDENCE_THRESHOLD = 0.3  # Ensure only confident detections are processed
+CONFIDENCE_THRESHOLD = 0.3  # Only process detections with confidence >= 0.3
 
 
 class Detection:
@@ -24,7 +24,7 @@ def parse_and_draw_detections(request):
     """Analyse the detected objects in the output tensor, draw them, and send QR data."""
     detections = parse_detections(request.get_metadata())
     draw_detections(request, detections)
-    send_qr_data(detections)  # Send valid QR data only
+    send_qr_data(request, detections)  # Now also decodes the QR code
 
 
 def parse_detections(metadata: dict):
@@ -64,18 +64,31 @@ def draw_detections(request, detections, stream="main"):
             cv2.rectangle(m.array, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
 
-def send_qr_data(detections):
-    """Send only high-confidence QR code detections to the server."""
-    for detection in detections:
-        data = {"qr_data": f"QR Code Detected - Confidence: {detection.conf:.2f}"}
-        try:
-            response = requests.post(SERVER_URL, json=data, timeout=2)
-            if response.status_code == 200:
-                print("[✅] QR data sent:", response.json())
-            else:
-                print(f"[❌] Failed to send QR data. Status Code: {response.status_code}")
-        except requests.exceptions.RequestException as e:
-            print(f"[⚠️] Error sending QR data: {e}")
+def decode_qr_code(frame, x, y, w, h):
+    """Extracts the QR code from the detected region and decodes it."""
+    roi = frame[y : y + h, x : x + w]  # Crop the detected region
+    qr_decoder = cv2.QRCodeDetector()
+    data, _, _ = qr_decoder.detectAndDecode(roi)  # Try to decode the QR code
+    return data if data else None  # Return decoded data or None if not found
+
+
+def send_qr_data(request, detections):
+    """Send only high-confidence QR code detections with decoded data."""
+    with MappedArray(request, "main") as m:
+        for detection in detections:
+            x, y, w, h = detection.box
+            qr_data = decode_qr_code(m.array, x, y, w, h)  # Decode the QR code
+
+            if qr_data:  # ✅ Send only if QR code is successfully decoded
+                data = {"qr_data": qr_data}
+                try:
+                    response = requests.post(SERVER_URL, json=data, timeout=2)
+                    if response.status_code == 200:
+                        print("[✅] QR Data Sent:", response.json())
+                    else:
+                        print(f"[❌] Failed to send QR data. Status Code: {response.status_code}")
+                except requests.exceptions.RequestException as e:
+                    print(f"[⚠️] Error sending QR data: {e}")
 
 
 def get_args():
