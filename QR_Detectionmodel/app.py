@@ -1,19 +1,20 @@
 import argparse
 import time
-import requests  # Added for sending QR data
+import requests
 from functools import lru_cache
 import cv2
 from picamera2 import MappedArray, Picamera2
 from picamera2.devices.imx500 import IMX500
 
 last_detections = []
-SERVER_URL = "http://0.0.0.0:5000/qr-data"  # URL to send QR data
-LABEL = "qr-code"  # Hardcoded label
+SERVER_URL = "http://0.0.0.0:5000/qr-data"  
+LABEL = "qr-code"  
+CONFIDENCE_THRESHOLD = 0.3  # Ensure only confident detections are processed
 
 
 class Detection:
     def __init__(self, coords, category, conf, metadata):
-        """Create a Detection object, recording the bounding box, category and confidence."""
+        """Create a Detection object, recording the bounding box, category, and confidence."""
         self.category = category
         self.conf = conf
         self.box = imx500.convert_inference_coords(coords, metadata, picam2)
@@ -23,11 +24,11 @@ def parse_and_draw_detections(request):
     """Analyse the detected objects in the output tensor, draw them, and send QR data."""
     detections = parse_detections(request.get_metadata())
     draw_detections(request, detections)
-    send_qr_data(detections)  # Send data to the local server
+    send_qr_data(detections)  # Send valid QR data only
 
 
 def parse_detections(metadata: dict):
-    """Parse the output tensor into a number of detected objects, scaled to the ISP out."""
+    """Parse the output tensor into detected objects, only keeping valid ones."""
     global last_detections
 
     np_outputs = imx500.get_outputs(metadata, add_batch=True)
@@ -35,39 +36,42 @@ def parse_detections(metadata: dict):
         return last_detections
 
     boxes, scores, classes = np_outputs[0][0], np_outputs[2][0], np_outputs[1][0]
-    last_detections = [
+    filtered_detections = [
         Detection(box, category, score, metadata)
         for box, score, category in zip(boxes, scores, classes)
+        if score >= CONFIDENCE_THRESHOLD  # ✅ Only keep high-confidence detections
     ]
-    return last_detections
+
+    last_detections = filtered_detections
+    return filtered_detections
 
 
 def draw_detections(request, detections, stream="main"):
-    """Draw the detections for this request onto the ISP output."""
+    """Draw only high-confidence detections onto the ISP output."""
     with MappedArray(request, stream) as m:
         for detection in detections:
             x, y, w, h = detection.box
-            label = f"{LABEL} ({detection.conf:.2f})"  # Use hardcoded "qr-code"
+            label = f"{LABEL} ({detection.conf:.2f})"
             cv2.putText(
                 m.array,
                 label,
                 (x + 5, y + 15),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
-                (0, 0, 255),
+                (0, 255, 0),
                 1,
             )
-            cv2.rectangle(m.array, (x, y), (x + w, y + h), (0, 0, 255, 0))
+            cv2.rectangle(m.array, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
 
 def send_qr_data(detections):
-    """Send detected QR code data to the local server."""
+    """Send only high-confidence QR code detections to the server."""
     for detection in detections:
-        data = {"qr_data": f"QR Code Detected - Confidence: {detection.conf}"}
+        data = {"qr_data": f"QR Code Detected - Confidence: {detection.conf:.2f}"}
         try:
             response = requests.post(SERVER_URL, json=data, timeout=2)
             if response.status_code == 200:
-                print("[✅] QR data sent successfully:", response.json())
+                print("[✅] QR data sent:", response.json())
             else:
                 print(f"[❌] Failed to send QR data. Status Code: {response.status_code}")
         except requests.exceptions.RequestException as e:
