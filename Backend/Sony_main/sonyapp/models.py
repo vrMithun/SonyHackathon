@@ -34,8 +34,11 @@ class Retailer(models.Model):
     def __str__(self):
         return self.name
 
+from django.db import models
+
 class Order(models.Model):
-    order_id = models.AutoField(primary_key=True)
+    order_id = models.PositiveIntegerField(primary_key=True, unique=True)  # Manually controlled ID
+    retailer = models.ForeignKey(Retailer, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     required_qty = models.PositiveIntegerField()
     order_date = models.DateTimeField(auto_now_add=True)
@@ -47,26 +50,30 @@ class Order(models.Model):
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
 
+    def save(self, *args, **kwargs):
+        if not self.order_id:  # Only set order_id if it's not already set
+            last_order = Order.objects.order_by('-order_id').first()
+            self.order_id = (last_order.order_id + 1) if last_order else 1  # Start from 1 if no orders exist
+
+        if self.pk is None:
+            # New order, increase total required quantity
+            self.product.total_required_quantity += self.required_qty
+        else:
+            # Updating existing order, adjust the total required quantity
+            original = Order.objects.get(pk=self.pk)
+            self.product.total_required_quantity += (self.required_qty - original.required_qty)
+
+        self.product.save(update_fields=['total_required_quantity'])
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        # Reduce total required quantity when an order is deleted
+        self.product.total_required_quantity -= self.required_qty
+        self.product.save(update_fields=['total_required_quantity'])
+        super().delete(*args, **kwargs)
+
     def __str__(self):
-        return f"Order {self.order_id} - {self.product.name}"
-
-class RetailerOrder(models.Model):
-    retailer = models.ForeignKey(Retailer, on_delete=models.CASCADE)
-    order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    order_date = models.DateTimeField(auto_now_add=True)
-
-    STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('allocated', 'Allocated'),
-        ('cancelled', 'Cancelled')
-    ]
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-
-    class Meta:
-        unique_together = ('retailer', 'order')
-
-    def __str__(self):
-        return f"Retailer {self.retailer.name} - Order {self.order.order_id}"
+        return f"Order {self.order_id} - {self.product.name} - {self.retailer.name}"
 
 class Truck(models.Model):
     truck_id = models.AutoField(primary_key=True)
