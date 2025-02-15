@@ -86,7 +86,6 @@ class Employee(models.Model):
     name = models.CharField(max_length=255)
     contact = models.CharField(max_length=20)
     truck = models.OneToOneField(Truck, on_delete=models.CASCADE)
-    shipment_priority = models.IntegerField(help_text="Lower value indicates higher priority")
 
     def __str__(self):
         return f"{self.name} (Truck: {self.truck.license_plate})"
