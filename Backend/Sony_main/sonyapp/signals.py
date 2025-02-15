@@ -54,3 +54,10 @@ def update_product_required_quantity_on_delete(sender, instance, **kwargs):
         product = instance.product
         product.total_required_quantity = max(0, product.total_required_quantity - instance.required_qty)
         product.save()
+
+@receiver(post_save, sender=Order)
+@receiver(post_delete, sender=Order)
+def update_product_status(sender, instance, **kwargs):
+    """Update the product status when an order is created, updated, or deleted."""
+    product = instance.product
+    product.update_status()

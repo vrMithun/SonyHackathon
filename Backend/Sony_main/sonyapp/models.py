@@ -26,9 +26,20 @@ class Product(models.Model):
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='sufficient')
 
+    def update_status(self):
+        """Update the status without calling save() to prevent recursion."""
+        if self.available_quantity > self.total_required_quantity:
+            self.status = 'sufficient'
+        else:
+            self.status = 'on_demand'
+
+    def save(self, *args, **kwargs):
+        """Ensure status is updated before saving without causing infinite recursion."""
+        self.update_status()
+        super().save(*args, **kwargs)  # Only one save call
+
     def __str__(self):
         return self.name
-
 
 class Retailer(models.Model):
     retailer_id = models.AutoField(primary_key=True)
@@ -84,8 +95,7 @@ class Employee(models.Model):
 class Shipment(models.Model):
     shipment_id = models.AutoField(primary_key=True)
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    truck = models.ForeignKey(Truck, on_delete=models.CASCADE)
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)  # Employee already has a Truck
     shipment_date = models.DateTimeField(auto_now_add=True)
 
     STATUS_CHOICES = [
@@ -96,4 +106,4 @@ class Shipment(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='in_transit')
 
     def __str__(self):
-        return f"Shipment {self.shipment_id} - {self.truck.license_plate}"
+        return f"Shipment {self.shipment_id} - {self.employee.truck.license_plate}"
