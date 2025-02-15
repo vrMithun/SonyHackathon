@@ -1,5 +1,8 @@
 from django.db import models, transaction
 from django.db.models import F
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+
 
 class Category(models.Model):
     category_id = models.AutoField(primary_key=True)
@@ -39,7 +42,7 @@ class Retailer(models.Model):
 
 
 class Order(models.Model):
-    order_id = models.AutoField(primary_key=True)  # Auto-incremented
+    order_id = models.AutoField(primary_key=True)
     retailer = models.ForeignKey(Retailer, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     required_qty = models.PositiveIntegerField()
@@ -48,12 +51,15 @@ class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('allocated', 'Allocated'),
+        ('delivered', 'Delivered'),
         ('cancelled', 'Cancelled')
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
 
     def __str__(self):
         return f"Order {self.order_id} - {self.product.name} - {self.retailer.name}"
+
+
 
 class Truck(models.Model):
     truck_id = models.AutoField(primary_key=True)
