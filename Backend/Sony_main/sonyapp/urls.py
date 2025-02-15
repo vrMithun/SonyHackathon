@@ -1,5 +1,6 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework.urlpatterns import format_suffix_patterns  # ✅ For better API format handling
 from .views import (
     CustomAuthToken, logout_view, get_employees, get_retailers,
     get_orders, allocate_orders, get_trucks, get_shipments
@@ -19,3 +20,6 @@ urlpatterns = [
     path('trucks/', get_trucks, name='get_trucks'),
     path('shipments/', get_shipments, name='get_shipments'),
 ]
+
+# ✅ Support API requests with format suffixes (e.g., `/orders.json`, `/orders.xml`)
+urlpatterns = format_suffix_patterns(urlpatterns, allowed=['json', 'html'])

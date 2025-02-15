@@ -93,8 +93,8 @@ class Employee(models.Model):
 
 class Shipment(models.Model):
     shipment_id = models.AutoField(primary_key=True)
-    order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)  # Employee already has a Truck
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="shipment")  # ✅ Enforcing one shipment per order
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="shipments")  # ✅ Adding related_name for clarity
     shipment_date = models.DateTimeField(auto_now_add=True)
 
     STATUS_CHOICES = [
@@ -105,4 +105,5 @@ class Shipment(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='in_transit')
 
     def __str__(self):
-        return f"Shipment {self.shipment_id} - {self.employee.truck.license_plate}"
+        truck_license_plate = getattr(self.employee.truck, 'license_plate', 'No Truck Assigned')  # ✅ Safer approach
+        return f"Shipment {self.shipment_id} - {truck_license_plate}"

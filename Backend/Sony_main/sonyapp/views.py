@@ -1,4 +1,5 @@
 import json
+from django.db import transaction
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -12,7 +13,7 @@ from .allocation import allocate_shipments
 
 # ✅ Custom Pagination Class
 class StandardPagination(PageNumberPagination):
-    page_size = 10  # Customize per need
+    page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 100
 
@@ -78,7 +79,7 @@ def get_retailers(request):
 @permission_classes([IsAuthenticated])
 def get_orders(request):
     try:
-        status_filter = request.GET.get('status')  # Optional filter
+        status_filter = request.GET.get('status')
         orders = Order.objects.all().order_by('-created_at')
 
         if status_filter:
@@ -88,16 +89,6 @@ def get_orders(request):
         paginated_orders = paginator.paginate_queryset(orders, request)
         serializer = OrderSerializer(paginated_orders, many=True)
         return paginator.get_paginated_response(serializer.data)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# ✅ Allocate Orders (Protected)
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def allocate_orders(request):
-    try:
-        allocation_result = json.loads(allocate_shipments())  # Convert JSON string to dict
-        return Response(allocation_result, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -124,5 +115,23 @@ def get_shipments(request):
         paginated_shipments = paginator.paginate_queryset(shipments, request)
         serializer = ShipmentSerializer(paginated_shipments, many=True)
         return paginator.get_paginated_response(serializer.data)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# ✅ Allocate Orders API (Fixed Version)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def allocate_orders(request):
+    """
+    API to allocate orders based on truck capacity, distance, and product availability.
+    """
+    try:
+        with transaction.atomic():
+            allocation_result = allocate_shipments(request)  # ✅ Directly pass DRF request
+
+            if isinstance(allocation_result, Response):  # ✅ Return DRF Response directly
+                return allocation_result
+
+        return Response({"error": "Unexpected error in allocation"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

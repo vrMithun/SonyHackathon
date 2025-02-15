@@ -1,89 +1,73 @@
-import json
-from django.db import transaction, connection
-from .models import Employee, Shipment, Order
+from django.db import transaction
+from rest_framework.response import Response
+from .models import Order, Employee, Shipment, Product
 
-def reset_shipment_sequence():
+def allocate_shipments(request):
     """
-    Reset the shipment_id sequence so that the next shipment_id 
-    is one greater than the current maximum in the sonyapp_shipment table.
+    Allocate shipments dynamically based on truck capacity, retailer distance, and product stock.
     """
-    with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT setval(pg_get_serial_sequence('sonyapp_shipment', 'shipment_id'), "
-            "COALESCE((SELECT MAX(shipment_id) FROM sonyapp_shipment), 0) + 1, false);"
-        )
+    allocated_orders = []
+    skipped_orders = []
 
-def allocate_shipments():
     try:
-        # Reset shipment sequence to avoid duplicate primary key errors.
-        reset_shipment_sequence()
-        
-        # Fetch all pending orders with related product and retailer data.
-        pending_orders = Order.objects.filter(status='pending').select_related('retailer', 'product')
-        employees = Employee.objects.select_related('truck').order_by('shipment_priority')
+        with transaction.atomic():
+            orders = Order.objects.filter(status='pending').select_related('product', 'retailer').order_by('order_date')
 
-        # Map each valid truck's primary key (truck_id) to its capacity.
-        truck_capacity = {e.truck.truck_id: e.truck.capacity for e in employees if e.truck}
+            assigned_truck_ids = set(
+                Shipment.objects.filter(status='in_transit').values_list('employee__truck__truck_id', flat=True)
+            )
 
-        allocations = []
+            available_employees = Employee.objects.exclude(truck__truck_id__in=assigned_truck_ids).select_related('truck')
 
-        for order in pending_orders:
-            retailer = order.retailer
-            product = order.product
+            if not available_employees.exists():
+                return Response({"error": "No available employees with trucks"}, status=400)
 
-            # Check stock availability.
-            if product.available_quantity < order.required_qty:
-                allocations.append({
+            truck_capacity_map = {emp.truck.truck_id: emp.truck.capacity for emp in available_employees}
+
+            for order in orders:
+                product = order.product
+                retailer = order.retailer
+
+                if not product or not retailer:
+                    skipped_orders.append({"order_id": order.order_id, "reason": "Invalid product or retailer"})
+                    continue
+
+                if product.available_quantity < order.required_qty:
+                    skipped_orders.append({"order_id": order.order_id, "reason": "Insufficient stock"})
+                    continue
+
+                employee = next(
+                    (emp for emp in available_employees if truck_capacity_map.get(emp.truck.truck_id, 0) >= order.required_qty),
+                    None
+                )
+
+                if not employee:
+                    skipped_orders.append({"order_id": order.order_id, "reason": "No suitable truck available"})
+                    continue
+
+                truck = employee.truck  
+
+                shipment = Shipment.objects.create(
+                    order=order,
+                    employee=employee,
+                    status='in_transit'
+                )
+
+                product.available_quantity -= order.required_qty
+                product.save()
+
+                truck_capacity_map[truck.truck_id] -= order.required_qty
+
+                order.status = 'allocated'
+                order.save()
+
+                allocated_orders.append({
                     "order_id": order.order_id,
-                    "status": "failed",
-                    "reason": "Insufficient stock"
+                    "shipment_id": shipment.shipment_id,
+                    "status": "allocated"
                 })
-                continue
 
-            assigned_employee = None
-            min_distance = float('inf')
-
-            # Find the best employee with enough truck capacity.
-            for employee in employees:
-                if (employee.truck and 
-                    truck_capacity.get(employee.truck.truck_id, 0) >= order.required_qty):
-                    if retailer.distance_from_warehouse < min_distance:
-                        assigned_employee = employee
-                        min_distance = retailer.distance_from_warehouse
-
-            if assigned_employee:
-                with transaction.atomic():
-                    # Update product stock.
-                    product.available_quantity -= order.required_qty
-                    product.total_shipped += order.required_qty
-                    product.save(update_fields=['available_quantity', 'total_shipped'])
-
-                    # Update order status.
-                    order.status = 'allocated'
-                    order.save(update_fields=['status'])
-
-                    # Reduce the truck's available capacity.
-                    truck_capacity[assigned_employee.truck.truck_id] -= order.required_qty
-
-                    # Create a Shipment record.
-                    shipment = Shipment.objects.create(
-                        order=order,
-                        truck=assigned_employee.truck,
-                        employee=assigned_employee,
-                        status='in_transit'
-                    )
-
-                    allocations.append({
-                        "order_id": order.order_id,
-                        "retailer": retailer.name,
-                        "product": product.name,
-                        "allocated_employee": assigned_employee.name,
-                        "truck": assigned_employee.truck.license_plate,
-                        "shipment_id": shipment.shipment_id,
-                        "status": "allocated"
-                    })
-
-        return json.dumps({"allocations": allocations}, indent=4)
+        return Response({"allocated_orders": allocated_orders, "skipped_orders": skipped_orders})
 
     except Exception as e:
-        return json.dumps({"error": f"Unexpected Error: {str(e)}"}, indent=4)
+        return Response({"error": str(e)}, status=500)
