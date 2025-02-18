@@ -120,3 +120,21 @@ Run the following command:
 npm run electron-pack
 ```
 The .exe file will be generated inside the /dist folder.
+
+## 🎯 Conclusion
+You have successfully bundled a Next.js + Electron app into a Windows .exe file. 🚀 </br>
+To build for macOS, modify the "mac" section in package.json and run the same command.
+
+## 💡 Troubleshooting
+❓ Electron App Doesn’t Load in Production?
+If the production build doesn’t display anything, try modifying electron.js to load Next.js correctly:
+
+```
+const appUrl = isDev
+  ? "http://localhost:3000"
+  : `file://${path.join(__dirname, "out", "index.html")}`;
+```
+Ensure next export is used to generate static files.
+
+## 🎉 You’re Done!
+Now you have a Next.js desktop application packaged as a Windows executable. 🎊
