@@ -21,14 +21,14 @@ Create a new Next.js project:
 Install Electron and required packages:
 
 bash
-Copy
-Edit
+```
 npm install electron electron-builder wait-on concurrently
-What Each Package Does
-electron → Runs Electron.
-electron-builder → Packages and builds the .exe file.
-wait-on → Ensures Electron starts only after Next.js is ready.
-concurrently → Runs multiple scripts in parallel.
+```
+# What Each Package Does  </br>
+-electron → Runs Electron </br>
+-electron-builder → Packages and builds the .exe file </br>
+-wait-on → Ensures Electron starts only after Next.js is ready </br>
+-concurrently → Runs multiple scripts in parallel 
 
 ## 3️⃣ Create electron.js (Electron Main Process File)
 Create an electro.js file in the root directory (/electron.js):
