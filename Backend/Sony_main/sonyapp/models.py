@@ -1,6 +1,6 @@
 from django.db import models, transaction
 from django.db.models import F
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_save, post_delete, pre_save
 from django.dispatch import receiver
 
 
@@ -41,6 +41,7 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
+
 class Retailer(models.Model):
     retailer_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
@@ -71,11 +72,11 @@ class Order(models.Model):
         return f"Order {self.order_id} - {self.product.name} - {self.retailer.name}"
 
 
-
 class Truck(models.Model):
     truck_id = models.AutoField(primary_key=True)
     license_plate = models.CharField(max_length=20, unique=True)
     capacity = models.PositiveIntegerField(help_text="Maximum shipment capacity")
+    is_available = models.BooleanField(default=True)  # ✅ Added availability tracking
 
     def __str__(self):
         return self.license_plate
@@ -93,8 +94,8 @@ class Employee(models.Model):
 
 class Shipment(models.Model):
     shipment_id = models.AutoField(primary_key=True)
-    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="shipment")  # ✅ Enforcing one shipment per order
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="shipments")  # ✅ Adding related_name for clarity
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="shipment")
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="shipments")
     shipment_date = models.DateTimeField(auto_now_add=True)
 
     STATUS_CHOICES = [
@@ -105,5 +106,5 @@ class Shipment(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='in_transit')
 
     def __str__(self):
-        truck_license_plate = getattr(self.employee.truck, 'license_plate', 'No Truck Assigned')  # ✅ Safer approach
+        truck_license_plate = getattr(self.employee.truck, 'license_plate', 'No Truck Assigned')
         return f"Shipment {self.shipment_id} - {truck_license_plate}"
