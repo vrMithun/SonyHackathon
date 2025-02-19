@@ -18,7 +18,7 @@ export function LoginForm({
 }: React.ComponentPropsWithoutRef<"div">) {
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="bg-black text-white border border-red-300 w-full md:w-96">
+      <Card className="bg-black text-white border border-white-300 w-full md:w-96">
         <CardHeader className="pb-2">
           <CardTitle className="text-2xl font-bold">Login</CardTitle>
           <CardDescription className="text-gray-400 border-b border-gray-600 pb-2">
