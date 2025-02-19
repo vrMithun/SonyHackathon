@@ -1,13 +1,16 @@
 "use client";
-import "@/styles/global.css"
 import React from 'react';
+import { Navbar } from '@/components/customerpage/Navbar';
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
-          <main>{children}</main>
-  )
+    <div>
+      <Navbar />
+      <main>{children}</main>
+    </div>
+  );
 }

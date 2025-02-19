@@ -1,5 +1,15 @@
-import EcommerceLayout from '@/components/customer_page/EcommerceLayout';
+"use client";
+import React, { useState } from 'react';
+import DashboardTab from '@/app/customerpage/dashboard/page';
+import { Navbar } from '@/components/customerpage/Navbar';
+const App = () => {
 
-export default function Home() {
-  return <EcommerceLayout />;
-}
+
+  return (
+      <div>
+        <DashboardTab/>
+      </div>
+  );
+};
+
+export default App;
