@@ -1,28 +1,34 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { GalleryVerticalEnd } from "lucide-react";
 import { LoginForm } from "@/components/auth/login-form";
-import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
 
   const handleLogin = async (username: string, password: string) => {
     try {
+      console.log("Logging in with:", username, password);
+
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
+        credentials: "include", // Include credentials for session management
       });
+
+      console.log("Response Status:", response.status);
 
       if (!response.ok) {
         throw new Error("Invalid credentials");
       }
 
-      router.push("/customerpage/dashboard"); // Redirect after successful login
+      console.log("Login successful! Redirecting...");
+      router.replace("/manager/stockCount"); // ✅ Use replace instead of push
     } catch (error) {
       console.error("Login failed", error);
-      throw error;
+      alert("Login failed: Invalid username or password.");
     }
   };
 

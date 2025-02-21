@@ -1,5 +1,4 @@
-
-import { LoginForm } from "@/components/login_form"
+import { LoginForm } from "@/components/auth/login-form";
 
 export default function Page() {
   return (
@@ -17,6 +16,5 @@ export default function Page() {
         </div>
       </div>
     </>
-  )
+  );
 }
-

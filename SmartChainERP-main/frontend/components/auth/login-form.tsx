@@ -30,33 +30,35 @@ export function LoginForm({ className, onLogin, ...props }: LoginFormProps) {
     e.preventDefault();
     setLoading(true);
     setError("");
+  
     try {
       if (onLogin) {
-        // Use provided onLogin function if available
         await onLogin(username, password);
       } else {
-        // Default implementation if no onLogin provided
-        const response = await fetch('/api/login', {
-          method: 'POST',
+        const response = await fetch("/api/login", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({ username, password }),
         });
-        
+  
+        const data = await response.json(); // Parse JSON response
+  
         if (!response.ok) {
-          throw new Error('Login failed');
+          throw new Error(data.message || "Login failed"); // Show server-provided error if available
         }
-        
+  
         // Redirect on success
-        window.location.href = '/dashboard';
+        window.location.href = "/manager/stockCount";
       }
-    } catch (err) {
-      setError("Invalid username or password.");
+    } catch (err: any) {
+      setError(err.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+  
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -83,7 +85,7 @@ export function LoginForm({ className, onLogin, ...props }: LoginFormProps) {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
-                  className="bg-gray-900 text-white border border-gray-700"
+                  className="bg-gray-900 text-white border border-gray-700 placeholder-gray-400"
                 />
               </div>
               <div className="grid gap-2">
@@ -104,7 +106,7 @@ export function LoginForm({ className, onLogin, ...props }: LoginFormProps) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="bg-gray-900 text-white border-gray-700 pr-10"
+                    className="bg-gray-900 text-white border-gray-700 pr-10 placeholder-gray-400"
                   />
                   <button
                     type="button"
