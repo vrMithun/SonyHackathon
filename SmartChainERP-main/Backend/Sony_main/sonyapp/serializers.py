@@ -37,3 +37,24 @@ class ShipmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Shipment
         fields = '__all__'
+
+    def update(self, instance, validated_data):
+        """
+        When status is updated to 'delivered', update:
+        - The order's status
+        - The product's total_required_quantity and total_shipped
+        """
+        if "status" in validated_data and validated_data["status"] == "delivered":
+            order = instance.order
+            product = order.product
+
+            # Update order status
+            order.status = "delivered"
+            order.save(update_fields=["status"])
+
+            # Update product details
+            product.total_required_quantity = max(0, product.total_required_quantity - order.required_qty)
+            product.total_shipped += order.required_qty
+            product.save(update_fields=["total_required_quantity", "total_shipped"])
+
+        return super().update(instance, validated_data)

@@ -102,6 +102,29 @@ class Shipment(models.Model):
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='in_transit')
 
+    def save(self, *args, **kwargs):
+        """
+        If shipment is marked as 'delivered', update:
+        - The corresponding order's status to 'delivered'.
+        - Reduce the product's total_required_quantity.
+        - Increase the product's total_shipped.
+        """
+        if self.status == "delivered":
+            order = self.order
+            product = order.product
+
+            # Update order status
+            order.status = "delivered"
+            order.save(update_fields=["status"])
+
+            # Update product details
+            product.total_required_quantity = max(0, product.total_required_quantity - order.required_qty)
+            product.total_shipped += order.required_qty
+            product.save(update_fields=["total_required_quantity", "total_shipped"])
+
+        super().save(*args, **kwargs)
+
     def __str__(self):
         truck_license_plate = getattr(self.employee.truck, 'license_plate', 'No Truck Assigned')
         return f"Shipment {self.shipment_id} - {truck_license_plate}"
+

@@ -8,18 +8,18 @@ from .views import (
 
 urlpatterns = [
     # ✅ Authentication Endpoints
-    path('token/', CustomAuthToken.as_view(), name='api_token_auth'),  # Login (Returns JWT tokens)
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),  # Refresh JWT token
-    path('logout/', logout_view, name='api_logout'),  # Logout (Blacklist refresh token)
+    path("token/", CustomAuthToken.as_view(), name="api_token_auth"),  # Login (Returns JWT tokens)
+    path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),  # Refresh JWT token
+    path("logout/", logout_view, name="api_logout"),  # Logout (Blacklist refresh token)
 
     # ✅ API Endpoints (Protected)
-    path('employees/', get_employees, name='get_employees'),
-    path('retailers/', get_retailers, name='get_retailers'),
-    path('orders/', get_orders, name='get_orders'),
-    path('allocate-orders/', allocate_orders, name='allocate_orders'),
-    path('trucks/', get_trucks, name='get_trucks'),
-    path('shipments/', get_shipments, name='get_shipments'),
+    path("employees/", get_employees, name="get_employees"),  # Admin Only
+    path("retailers/", get_retailers, name="get_retailers"),  # Admin Only
+    path("orders/", get_orders, name="get_orders"),  # Admin & Employees
+    path("allocate-orders/", allocate_orders, name="allocate_orders"),  # Employees Only
+    path("trucks/", get_trucks, name="get_trucks"),  # Admin Only
+    path("shipments/", get_shipments, name="get_shipments"),  # Admin & Employees
 ]
 
 # ✅ Support API requests with format suffixes (e.g., `/orders.json`, `/orders.xml`)
-urlpatterns = format_suffix_patterns(urlpatterns, allowed=['json', 'html'])
+urlpatterns = format_suffix_patterns(urlpatterns, allowed=["json", "html"])
