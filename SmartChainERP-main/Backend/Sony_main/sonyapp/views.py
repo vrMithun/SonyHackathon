@@ -8,10 +8,10 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
 
-from .models import Employee, Retailer, Order, Truck, Shipment
+from .models import Employee, Retailer, Order, Truck, Shipment,Product
 from .serializers import (
     EmployeeSerializer, RetailerSerializer, 
-    OrderSerializer, TruckSerializer, ShipmentSerializer
+    OrderSerializer, ProductSerializer,TruckSerializer, ShipmentSerializer
 )
 from .allocation import allocate_shipments
 from .permissions import IsAdminUser, IsEmployeeUser  # ✅ Import Custom Role Permissions
@@ -161,3 +161,13 @@ def allocate_orders(request):
         )
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+@api_view(['GET'])
+@permission_classes([IsAuthenticated,IsAdminUser])
+def get_stock_data(request):
+    if not request.user.is_staff:  # Extra check for safety
+        return Response({"detail": "Access denied. Admins only."}, status=status.HTTP_403_FORBIDDEN)
+
+    products = Product.objects.all()
+    serializer = ProductSerializer(products, many=True)
+    return Response(serializer.data)
