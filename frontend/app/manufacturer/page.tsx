@@ -3,8 +3,8 @@ import React, { useEffect, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
-import { DataTable } from "./data-table";
-import { columns } from "./columns";
+import { DataTable } from "../../components/manufacturer/data-table";
+import { columns } from "../../components/manufacturer/columns";
 import {
   ChartConfig,
   ChartContainer,
