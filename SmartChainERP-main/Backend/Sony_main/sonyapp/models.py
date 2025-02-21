@@ -127,4 +127,3 @@ class Shipment(models.Model):
     def __str__(self):
         truck_license_plate = getattr(self.employee.truck, 'license_plate', 'No Truck Assigned')
         return f"Shipment {self.shipment_id} - {truck_license_plate}"
-
