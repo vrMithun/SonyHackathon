@@ -1,0 +1,107 @@
+from django.db import models
+from django.contrib.auth.models import User
+
+
+class Category(models.Model):
+    category_id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Product(models.Model):
+    product_id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=255)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+    available_quantity = models.PositiveIntegerField()
+    total_shipped = models.PositiveIntegerField(default=0)
+    total_required_quantity = models.PositiveIntegerField(default=0)
+
+    STATUS_CHOICES = [
+        ('on_demand', 'On Demand'),
+        ('sufficient', 'Sufficient')
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='sufficient')
+
+    def update_status(self):
+        """Update the status based on available and required quantity."""
+        if self.available_quantity > self.total_required_quantity:
+            self.status = 'sufficient'
+        else:
+            self.status = 'on_demand'
+
+    def save(self, *args, **kwargs):
+        self.update_status()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
+class Retailer(models.Model):
+    retailer_id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=255)
+    address = models.TextField()
+    contact = models.CharField(max_length=20)
+    distance_from_warehouse = models.FloatField()
+
+    def __str__(self):
+        return self.name
+
+
+class Order(models.Model):
+    order_id = models.AutoField(primary_key=True)
+    retailer = models.ForeignKey(Retailer, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    required_qty = models.PositiveIntegerField()
+    order_date = models.DateTimeField(auto_now_add=True)
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('allocated', 'Allocated'),
+        ('delivered', 'Delivered'),
+        ('cancelled', 'Cancelled')
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+
+    def __str__(self):
+        return f"Order {self.order_id} - {self.product.name} - {self.retailer.name}"
+
+
+class Truck(models.Model):
+    truck_id = models.AutoField(primary_key=True)
+    license_plate = models.CharField(max_length=20, unique=True)
+    capacity = models.PositiveIntegerField(help_text="Maximum shipment capacity")
+    is_available = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.license_plate
+
+
+class Employee(models.Model):
+    employee_id = models.AutoField(primary_key=True)  # ✅ Ensuring ID is auto-generated
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="employee_profile", null=True)
+    contact = models.CharField(max_length=20, default="Not Provided")
+    truck = models.OneToOneField(Truck, on_delete=models.CASCADE, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username} (Truck: {self.truck.license_plate if self.truck else 'No Truck Assigned'})"
+
+
+class Shipment(models.Model):
+    shipment_id = models.AutoField(primary_key=True)
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="shipment")
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="shipments")
+    shipment_date = models.DateTimeField(auto_now_add=True)
+
+    STATUS_CHOICES = [
+        ('in_transit', 'In Transit'),
+        ('delivered', 'Delivered'),
+        ('failed', 'Failed')
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='in_transit')
+
+    def __str__(self):
+        truck_license_plate = getattr(self.employee.truck, 'license_plate', 'No Truck Assigned')
+        return f"Shipment {self.shipment_id} - {truck_license_plate}"
