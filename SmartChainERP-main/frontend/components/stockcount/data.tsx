@@ -1,83 +1,73 @@
+import { useEffect, useState } from "react";
+
 export interface StockItem {
     productName: string;
-    stock: string;
+    category: string;
     available: number;
     sold: number;
-    category: string;
     demanded: number;
-    lastUpdated: string;
-  }
-  
-  export const stockData: StockItem[] = [
-    { 
-      productName: "iPhone 13",
-      stock: "Electronics", 
-      available: 150, 
-      sold: 50, 
-      category: "tech", 
-      demanded: 200, 
-      lastUpdated: "2024-02-12T10:30:00" 
-    },
-    { 
-      productName: "Plastic Containers",
-      stock: "Plastics", 
-      available: 300, 
-      sold: 120, 
-      category: "materials", 
-      demanded: 350, 
-      lastUpdated: "2024-02-12T09:15:00" 
-    },
-    { 
-      productName: "Coffee Maker",
-      stock: "Household", 
-      available: 200, 
-      sold: 75, 
-      category: "home", 
-      demanded: 180, 
-      lastUpdated: "2024-02-12T11:45:00" 
-    },
-    { 
-      productName: "Car Battery",
-      stock: "Automotive", 
-      available: 100, 
-      sold: 25, 
-      category: "vehicles", 
-      demanded: 150, 
-      lastUpdated: "2024-02-11T16:20:00" 
-    },
-    { 
-      productName: "Power Tools",
-      stock: "Industrial", 
-      available: 250, 
-      sold: 90, 
-      category: "manufacturing", 
-      demanded: 280, 
-      lastUpdated: "2024-02-12T08:00:00" 
-    },
-    { 
-      productName: "Gaming Console",
-      stock: "Electronics", 
-      available: 75, 
-      sold: 45, 
-      category: "tech", 
-      demanded: 200, 
-      lastUpdated: "2024-02-12T07:30:00" 
-    },
-    { 
-      productName: "Smart Watch",
-      stock: "Electronics", 
-      available: 80, 
-      sold: 60, 
-      category: "tech", 
-      demanded: 150, 
-      lastUpdated: "2024-02-12T06:45:00" 
+    status: string;
+}
+
+export const fetchStockData = async (): Promise<StockItem[]> => {
+    try {
+        const token = localStorage.getItem("accessToken"); // ✅ Ensure correct key
+
+        if (!token) {
+            console.error("No authentication token, redirecting to authentication page.");
+            window.location.href = "/authentication"; // ✅ Redirect to correct page
+            return [];
+        }
+
+        const response = await fetch("http://127.0.0.1:8000/api/stock/", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`,
+            },
+        });
+
+        if (response.status === 401) {
+            console.error("Token expired. Redirecting to authentication page...");
+            localStorage.removeItem("accessToken");
+            window.location.href = "/authentication"; // ✅ Redirect to authentication
+            return [];
+        }
+
+        if (!response.ok) {
+            throw new Error("Failed to fetch stock data");
+        }
+
+        const data = await response.json();
+        return data.map((item: any) => ({
+            productName: item.name,
+            category: item.category,
+            available: item.available_quantity,
+            sold: item.total_shipped,
+            demanded: item.total_required_quantity,
+            status: item.status,
+        }));
+    } catch (error) {
+        console.error("Error fetching stock data:", error);
+        return [];
     }
-  ];
-  
-  export const categoryData = [
-    { name: "Electronics", value: 150, fill: "#0088FE" },
-    { name: "Plastics", value: 300, fill: "#00C49F" },
-    { name: "Household", value: 200, fill: "#FFBB28" },
-    { name: "Automotive", value: 100, fill: "#FF8042" },
-    { name: "Industrial", value: 250, fill: "#8884d8" }
-  ];
+};
+
+export const useStockData = () => {
+    const [stockData, setStockData] = useState<StockItem[]>([]);
+
+    useEffect(() => {
+        if (typeof window !== "undefined") { // ✅ Ensures it runs only in the browser
+            const token = localStorage.getItem("accessToken");
+
+            if (token) {
+                fetchStockData().then(setStockData);
+            } else {
+                console.error("No authentication token, redirecting to authentication page.");
+                window.location.href = "/authentication"; // ✅ Correct redirect path
+            }
+        }
+    }, []);
+
+    return stockData;
+};

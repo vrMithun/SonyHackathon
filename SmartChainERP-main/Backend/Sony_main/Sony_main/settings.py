@@ -144,4 +144,5 @@ REST_FRAMEWORK = {
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # Change this to match your frontend URL
+    "http://127.0.0.1:3000",
 ]

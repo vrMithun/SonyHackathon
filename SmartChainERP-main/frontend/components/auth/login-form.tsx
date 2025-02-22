@@ -13,7 +13,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Chrome, Eye, EyeOff } from "lucide-react";
-
+import { POST } from "@/app/api/login/route";
+import { redirect } from "next/dist/server/api-utils";
 interface LoginFormProps extends React.ComponentPropsWithoutRef<"div"> {
   // Keep the onLogin prop for flexibility, but handle it properly
   onLogin?: (username: string, password: string) => Promise<void>;
@@ -30,7 +31,7 @@ export function LoginForm({ className, onLogin, ...props }: LoginFormProps) {
     e.preventDefault();
     setLoading(true);
     setError("");
-  
+    console.log("Submit activated")
     try {
       if (onLogin) {
         await onLogin(username, password);
@@ -44,18 +45,23 @@ export function LoginForm({ className, onLogin, ...props }: LoginFormProps) {
         });
   
         const data = await response.json(); // Parse JSON response
-  
+        
+        const access_token = POST(username,password);
+       const token = access_token;
+
+        // ✅ Store token in local storage
+        localStorage.setItem("accessToken", "token"); 
         if (!response.ok) {
           throw new Error(data.message || "Login failed"); // Show server-provided error if available
         }
   
         // Redirect on success
-        window.location.href = "/manager/stockCount";
+        redirect('@/app/manager/stockCount')
       }
     } catch (err: any) {
       setError(err.message || "Something went wrong. Please try again.");
     } finally {
-      setLoading(false);
+      setLoading(true);
     }
   };
   

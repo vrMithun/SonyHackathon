@@ -9,40 +9,34 @@ export default function LoginPage() {
 
   const handleLogin = async (username: string, password: string) => {
     try {
-      console.log("Logging in with:", username, password);
+        console.log("Logging in with:", username, password);
 
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-        credentials: "include", // Include credentials for session management
-      });
+        const response = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password }),
+            credentials: "include",
+        });
 
-      console.log("Response Status:", response.status);
+        console.log("Response Status:", response.status);
+        
+        if (!response.ok) {
+            throw new Error("Invalid credentials");
+        }
 
-      if (!response.ok) {
-        throw new Error("Invalid credentials");
-      }
+        const { token } = await response.json(); // Extract token from response
 
-      console.log("Login successful! Redirecting...");
-      router.replace("/manager/stockCount"); // ✅ Use replace instead of push
+        // ✅ Store token in local storage
+        localStorage.setItem("accessToken", token.access);  // Save only the access token
+
+        console.log("Login successful! Redirecting...");
+        router.replace("/manager/stockCount");
     } catch (error) {
-      console.error("Login failed", error);
-      alert("Login failed: Invalid username or password.");
+        console.error("Login failed", error);
+        alert("Login failed: Invalid username or password.");
     }
-  };
+};
 
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-6 md:p-10">
-      <div className="flex w-full max-w-sm flex-col gap-6">
-        <a href="/" className="flex items-center gap-2 self-center font-medium">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <GalleryVerticalEnd className="h-4 w-4" />
-          </div>
-          Acme Inc.
-        </a>
-        <LoginForm onLogin={handleLogin} />
-      </div>
-    </div>
-  );
+
+  
 }
