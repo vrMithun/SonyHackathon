@@ -5,7 +5,7 @@ import Anchor from "@/components/customerpage/anchor";
 export const NAVLINKS = [
   {
     title: "Dashboard",
-    href: "/manufacturer/dashboard",
+    href: "/manufacturer",
   },
   {
     title: "Accounting",
