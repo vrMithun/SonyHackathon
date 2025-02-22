@@ -11,6 +11,7 @@ export interface StockItem {
 export interface CategoryItem {
   name: string;
   value: number;
+  fill: string;
 }
 
 export function getRandomColor(): string {
@@ -109,10 +110,23 @@ export async function fetchCategoryData(): Promise<CategoryItem[]> {
     }
   ];
   
-  export const categoryData = [
-    { name: "Electronics", value: 150, fill: getRandomColor() },
-    { name: "Plastics", value: 300, fill: getRandomColor() },
-    { name: "Household", value: 200, fill: getRandomColor() },
-    { name: "Automotive", value: 100, fill: getRandomColor() },
-    { name: "Industrial", value: 250, fill: getRandomColor() }
-  ];
+
+  export function generateCategoryData(stockData: StockItem[]): CategoryItem[] {
+    const categoryMap: { [key: string]: number } = {};
+  
+    stockData.forEach((item) => {
+      if (categoryMap[item.category]) {
+        categoryMap[item.category] += item.available;
+      } else {
+        categoryMap[item.category] = item.available;
+      }
+    });
+  
+    return Object.keys(categoryMap).map((category) => ({
+      name: category,
+      value: categoryMap[category],
+      fill: getRandomColor(),
+    }));
+  }
+  
+  export const categoryData = generateCategoryData(stockData);
