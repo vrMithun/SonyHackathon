@@ -143,7 +143,7 @@ def get_shipments(request):
 
 # ✅ Allocate Orders (Only Employees)
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsEmployeeUser])  # ✅ Employees Only
+@permission_classes([IsAuthenticated])  
 def allocate_orders(request):
     """
     API to allocate orders based on truck capacity, distance, and product availability.

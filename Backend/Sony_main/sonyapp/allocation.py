@@ -34,7 +34,13 @@ def allocate_shipments(request):
 
                 if product.available_quantity < order.required_qty:
                     skipped_orders.append({"order_id": order.order_id, "reason": "Insufficient stock"})
+                    
+                    # 🔽 Ensure total required quantity updates
+                    product.total_required_quantity += order.required_qty
+                    product.save()
+                    
                     continue
+
 
                 employee = next(
                     (emp for emp in available_employees if truck_capacity_map.get(emp.truck.truck_id, 0) >= order.required_qty),
