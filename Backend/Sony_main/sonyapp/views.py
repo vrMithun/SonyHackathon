@@ -178,14 +178,21 @@ def category_stock_data(request):
     """
     Returns category names and product count for visualization.
     """
-    categories = Category.objects.annotate(product_count=Count('product'))
-    serialized_data = CategorySerializer(categories, many=True).data
+    try:
+        # Use the correct related name to count products in each category
+        categories = Category.objects.annotate(product_count=Count('products'))  # ✅ Fix: 'products' instead of 'product'
 
-    # Add product count to serialized data
-    for item in serialized_data:
-        item["value"] = next(
-            (cat["product_count"] for cat in categories.values("name", "product_count") if cat["name"] == item["name"]),
-            0
-        )
+        # Serialize the data
+        serialized_data = CategorySerializer(categories, many=True).data
 
-    return Response(serialized_data)
+        # Attach product_count to each category in serialized data
+        for category in serialized_data:
+            category["value"] = next(
+                (cat["product_count"] for cat in categories.values("name", "product_count") if cat["name"] == category["name"]),
+                0
+            )
+
+        return Response({"success": True, "data": serialized_data})
+    
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
