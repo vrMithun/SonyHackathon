@@ -2,16 +2,17 @@ import { useState, useEffect } from "react";
 
 export interface StockItem {
   productName: string;
-  category: string;
+  category: number; // Category ID, since API provides ID
   available: number;
   sold: number;
   demanded: number;
 }
 
 export interface CategoryItem {
+  category_id: number;
   name: string;
   product_count: number;
-  fill: string; // Ensure fill property exists
+  fill: string;
 }
 
 const BASE_URL = "http://127.0.0.1:8000/api";
@@ -43,11 +44,11 @@ export const useStockData = () => {
 
         const formattedData = Array.isArray(data)
           ? data.map((item) => ({
-              productName: item.productName || "Unknown",
-              category: item.category || "Uncategorized",
-              available: item.available || 0,
-              sold: item.sold || 0,
-              demanded: item.demanded || 0,
+              productName: item.name || "Unknown", // Fix: API returns 'name'
+              category: item.category || 0, // Fix: API gives category as ID
+              available: item.available_quantity || 0, // Fix: Correct API field
+              sold: item.total_shipped || 0, // Fix: Correct API field
+              demanded: item.total_required_quantity || 0, // Fix: Correct API field
             }))
           : [];
 
@@ -74,15 +75,18 @@ export const useCategoryData = () => {
   useEffect(() => {
     const fetchCategoryData = async () => {
       try {
-        const response = await fetch(`${BASE_URL}/categories/`);
+        const response = await fetch(`${BASE_URL}/category-stock/`); // Fix: Corrected endpoint
 
         if (!response.ok) throw new Error("Failed to fetch category data");
 
-        const data = await response.json();
-        console.log("Fetched category data:", data);
+        const result = await response.json();
+        console.log("Fetched category data:", result);
+
+        const data = result.data || []; // Fix: API wraps response in 'data'
 
         const formattedData: CategoryItem[] = data.map(
-          (category: { name: string; product_count: number }, index: number) => ({
+          (category: { category_id: number; name: string; product_count: number }, index: number) => ({
+            category_id: category.category_id, // Fix: API provides category_id
             name: category.name,
             product_count: category.product_count,
             fill: ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#A28AFF"][index % 5], // Assign colors dynamically
