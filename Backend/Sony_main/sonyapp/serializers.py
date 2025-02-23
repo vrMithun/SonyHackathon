@@ -58,3 +58,10 @@ class ShipmentSerializer(serializers.ModelSerializer):
             product.save(update_fields=["total_required_quantity", "total_shipped"])
 
         return super().update(instance, validated_data)
+    
+class CategorySerializer(serializers.ModelSerializer):
+    product_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Category
+        fields = ['category_id', 'name', 'product_count']

@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
-
+from django.db.models import Count
 
 class Category(models.Model):
     category_id = models.AutoField(primary_key=True)
@@ -9,11 +9,18 @@ class Category(models.Model):
     def __str__(self):
         return self.name
 
+    @classmethod
+    def get_category_counts(cls):
+        """
+        Returns a queryset with categories and their respective product counts.
+        """
+        return cls.objects.annotate(product_count=Count('products'))
+
 
 class Product(models.Model):
     product_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
-    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="products")
     available_quantity = models.PositiveIntegerField()
     total_shipped = models.PositiveIntegerField(default=0)
     total_required_quantity = models.PositiveIntegerField(default=0)
@@ -37,6 +44,7 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+
 
 
 class Retailer(models.Model):

@@ -2,15 +2,14 @@ import React, { useState } from 'react';
 import { Package, ChevronDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StockItem } from './data';
-import { getTimeAgo } from './utils';
 
 interface SidePanelProps {
-  stockData: StockItem[];
+  stockData?: StockItem[]; // Make it optional to prevent runtime errors
 }
 
-const SidePanel: React.FC<SidePanelProps> = ({ stockData }) => {
+const SidePanel: React.FC<SidePanelProps> = ({ stockData = [] }) => { // Provide default empty array
   const [showAllDemand, setShowAllDemand] = useState(false);
-  
+
   const highDemandItems = stockData.filter(item => item.demanded > item.available);
   const displayedDemandItems = showAllDemand ? highDemandItems : highDemandItems.slice(0, 4);
   const hasMoreItems = highDemandItems.length > 4;
@@ -27,10 +26,6 @@ const SidePanel: React.FC<SidePanelProps> = ({ stockData }) => {
             <div className="bg-blue-900/30 p-4 rounded border border-blue-400/30">
               <p className="text-sm text-blue-400">Total Products</p>
               <p className="text-2xl font-bold text-blue-300">{stockData.length}</p>
-            </div>
-            <div className="bg-blue-900/30 p-4 rounded border border-blue-400/30">
-              <p className="text-sm text-blue-400">Total Stock Value</p>
-              <p className="text-2xl font-bold text-blue-300">$145,000</p>
             </div>
             <div className="bg-blue-900/30 p-4 rounded border border-blue-400/30">
               <p className="text-sm text-blue-400">High Demand Items</p>
@@ -76,8 +71,6 @@ const SidePanel: React.FC<SidePanelProps> = ({ stockData }) => {
           </div>
         </CardContent>
       </Card>
-
-
     </>
   );
 };

@@ -7,11 +7,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
-
-from .models import Employee, Retailer, Order, Truck, Shipment,Product
+from django.db.models import Count
+from .models import Employee, Retailer, Order, Truck, Shipment,Product,Category
 from .serializers import (
     EmployeeSerializer, RetailerSerializer, 
-    OrderSerializer, ProductSerializer,TruckSerializer, ShipmentSerializer
+    OrderSerializer, ProductSerializer,TruckSerializer, ShipmentSerializer,CategorySerializer
 )
 from .allocation import allocate_shipments
 from .permissions import IsAdminUser, IsEmployeeUser  # ✅ Import Custom Role Permissions
@@ -171,3 +171,21 @@ def get_stock_data(request):
     products = Product.objects.all()
     serializer = ProductSerializer(products, many=True)
     return Response(serializer.data)
+
+
+@api_view(['GET'])
+def category_stock_data(request):
+    """
+    Returns category names and product count for visualization.
+    """
+    categories = Category.objects.annotate(product_count=Count('product'))
+    serialized_data = CategorySerializer(categories, many=True).data
+
+    # Add product count to serialized data
+    for item in serialized_data:
+        item["value"] = next(
+            (cat["product_count"] for cat in categories.values("name", "product_count") if cat["name"] == item["name"]),
+            0
+        )
+
+    return Response(serialized_data)

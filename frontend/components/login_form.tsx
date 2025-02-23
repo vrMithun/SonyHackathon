@@ -29,16 +29,15 @@ export function LoginForm({
     setError("");
 
     try {
-      console.log("🔄 Sending login request...");
-
       const response = await fetch("http://127.0.0.1:8000/api/token/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Accept: "application/json",
         },
         body: JSON.stringify({ username, password }),
       });
+
+      console.log("🔄 Fetch response status:", response.status);
 
       const data = await response.json();
       console.log("🟢 API Response:", data);
@@ -53,7 +52,7 @@ export function LoginForm({
         console.log("✅ Login Successful!");
         localStorage.setItem("access_token", data.access);
         localStorage.setItem("refresh_token", data.refresh);
-        router.replace("/manufacturer"); // Redirect to StockDashboard.tsx
+        router.replace("/manufacturer");
       } else {
         console.error("❌ Unexpected response format:", data);
         setError("Unexpected error. Please try again.");
