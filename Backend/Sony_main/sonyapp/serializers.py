@@ -7,9 +7,12 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ProductSerializer(serializers.ModelSerializer):
+    category = serializers.CharField(source='category.name')  # Fetching category name instead of ID
+
     class Meta:
         model = Product
-        fields = '__all__'
+        fields = '__all__'  # Keep all fields from the Product model, but override 'category'
+
 
 class RetailerSerializer(serializers.ModelSerializer):
     class Meta:
