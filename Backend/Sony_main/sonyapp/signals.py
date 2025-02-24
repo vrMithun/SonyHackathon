@@ -1,4 +1,5 @@
 from django.db.models.signals import post_save, post_delete, pre_save
+from django.db.models import F
 from django.dispatch import receiver
 from django.contrib.auth.models import User, Group
 from .models import Order, Product, Shipment, Truck, Employee
@@ -10,9 +11,9 @@ from .models import Order, Product, Shipment, Truck, Employee
 def create_employee_for_user(sender, instance, created, **kwargs):
     """Automatically create Employee when a user is added to the 'Employee' group."""
     if created and instance.groups.filter(name="Employee").exists():
-        truck = Truck.objects.filter(is_available=True).first()  # Assign an available truck if any
+        truck = Truck.objects.filter(is_available=True).first()
         if truck:
-            truck.is_available = False  # Mark truck as assigned
+            truck.is_available = False  
             truck.save()
         Employee.objects.create(user=instance, contact="Not Provided", truck=truck)
 
@@ -60,22 +61,28 @@ def update_product_required_quantity_on_save(sender, instance, created, **kwargs
 
     if created:
         if instance.status in ['pending', 'allocated']:
-            product.total_required_quantity += instance.required_qty
+            Product.objects.filter(product_id=product.product_id).update(
+                total_required_quantity=F('total_required_quantity') + instance.required_qty
+            )
     else:
         old_status = instance._old_status
         old_required_qty = instance._old_required_qty
 
         if old_status in ['pending', 'allocated'] and instance.status in ['delivered', 'cancelled']:
-            product.total_required_quantity = max(0, product.total_required_quantity - old_required_qty)
+            Product.objects.filter(product_id=product.product_id).update(
+                total_required_quantity=F('total_required_quantity') - old_required_qty
+            )
 
         elif old_status in ['delivered', 'cancelled'] and instance.status in ['pending', 'allocated']:
-            product.total_required_quantity += instance.required_qty
+            Product.objects.filter(product_id=product.product_id).update(
+                total_required_quantity=F('total_required_quantity') + instance.required_qty
+            )
 
         elif old_status in ['pending', 'allocated'] and instance.status in ['pending', 'allocated']:
             quantity_difference = instance.required_qty - old_required_qty
-            product.total_required_quantity = max(0, product.total_required_quantity + quantity_difference)
-
-    product.save()
+            Product.objects.filter(product_id=product.product_id).update(
+                total_required_quantity=F('total_required_quantity') + quantity_difference
+            )
 
 
 # ===================== SHIPMENT SIGNALS =====================
@@ -83,14 +90,12 @@ def update_product_required_quantity_on_save(sender, instance, created, **kwargs
 @receiver(post_save, sender=Shipment)
 def update_truck_availability_on_shipment(sender, instance, created, **kwargs):
     """Updates truck availability based on shipment status."""
-    
     truck = getattr(instance.employee, 'truck', None)
 
     if truck:
         if created and instance.status == 'in_transit':
             truck.is_available = False
         elif instance.status == 'delivered':
-            # Check if all shipments of this truck are delivered
             all_delivered = not Shipment.objects.filter(employee=instance.employee, status='in_transit').exists()
             if all_delivered:
                 truck.is_available = True

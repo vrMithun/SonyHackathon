@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import F
 from rest_framework.response import Response
 from .models import Order, Employee, Shipment, Product
 
@@ -35,12 +36,10 @@ def allocate_shipments(request):
                 if product.available_quantity < order.required_qty:
                     skipped_orders.append({"order_id": order.order_id, "reason": "Insufficient stock"})
                     
-                    # 🔽 Ensure total required quantity updates
-                    product.total_required_quantity += order.required_qty
-                    product.save()
+                    product.total_required_quantity = F('total_required_quantity') + order.required_qty
+                    product.save(update_fields=['total_required_quantity'])
                     
                     continue
-
 
                 employee = next(
                     (emp for emp in available_employees if truck_capacity_map.get(emp.truck.truck_id, 0) >= order.required_qty),
@@ -59,8 +58,10 @@ def allocate_shipments(request):
                     status='in_transit'
                 )
 
-                product.available_quantity -= order.required_qty
-                product.save()
+                # 🔽 Fix: Reduce available quantity using F() to prevent race conditions
+                Product.objects.filter(product_id=product.product_id).update(
+                    available_quantity=F('available_quantity') - order.required_qty
+                )
 
                 truck_capacity_map[truck.truck_id] -= order.required_qty
 

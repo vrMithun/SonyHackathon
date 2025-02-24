@@ -33,10 +33,10 @@ class Product(models.Model):
 
     def update_status(self):
         """Update the status based on available and required quantity."""
-        if self.available_quantity > self.total_required_quantity:
-            self.status = 'sufficient'
-        else:
-            self.status = 'on_demand'
+        available = self.available_quantity if isinstance(self.available_quantity, int) else 0
+        required = self.total_required_quantity if isinstance(self.total_required_quantity, int) else 0
+
+        self.status = 'sufficient' if available > required else 'on_demand'
 
     def save(self, *args, **kwargs):
         self.update_status()
