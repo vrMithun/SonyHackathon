@@ -89,7 +89,6 @@ def update_product_required_quantity_on_save(sender, instance, created, **kwargs
 
 @receiver(post_save, sender=Shipment)
 def update_truck_availability_on_shipment(sender, instance, created, **kwargs):
-    """Updates truck availability based on shipment status."""
     truck = getattr(instance.employee, 'truck', None)
 
     if truck:
@@ -99,5 +98,10 @@ def update_truck_availability_on_shipment(sender, instance, created, **kwargs):
             all_delivered = not Shipment.objects.filter(employee=instance.employee, status='in_transit').exists()
             if all_delivered:
                 truck.is_available = True
-
         truck.save()
+
+    # ✅ Ensure product's total_required_quantity never goes negative
+    if instance.status == "delivered":
+        product = instance.order.product
+        product.update_status()
+        product.save(update_fields=["total_required_quantity", "total_shipped", "status"])

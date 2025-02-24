@@ -8,14 +8,13 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Count
-from .models import Employee, Retailer, Order, Truck, Shipment,Product,Category
+from .models import Employee, Retailer, Order, Truck, Shipment, Product, Category
 from .serializers import (
     EmployeeSerializer, RetailerSerializer, 
-    OrderSerializer, ProductSerializer,TruckSerializer, ShipmentSerializer,CategorySerializer
+    OrderSerializer, ProductSerializer, TruckSerializer, ShipmentSerializer, CategorySerializer
 )
 from .allocation import allocate_shipments
-from .permissions import IsAdminUser, IsEmployeeUser  # ✅ Import Custom Role Permissions
-
+from .permissions import IsAdminUser
 
 # ✅ Custom Pagination Class
 class StandardPagination(PageNumberPagination):
@@ -23,12 +22,8 @@ class StandardPagination(PageNumberPagination):
     page_size_query_param = "page_size"
     max_page_size = 100
 
-
 # ✅ Custom JWT Login View
 class CustomAuthToken(TokenObtainPairView):
-    """
-    Custom authentication to generate access and refresh tokens.
-    """
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         user = request.user
@@ -42,7 +37,6 @@ class CustomAuthToken(TokenObtainPairView):
             status=status.HTTP_200_OK,
         )
 
-
 # ✅ Logout View (Blacklist Refresh Token)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -50,25 +44,18 @@ def logout_view(request):
     try:
         refresh_token = request.data.get("refresh")
         if not refresh_token:
-            return Response(
-                {"error": "Refresh token is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({"error": "Refresh token is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         token = RefreshToken(refresh_token)
         token.blacklist()
 
-        return Response(
-            {"message": "Logged out successfully"}, 
-            status=status.HTTP_205_RESET_CONTENT
-        )
+        return Response({"message": "Logged out successfully"}, status=status.HTTP_205_RESET_CONTENT)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-
-# ✅ Get Employees (Only Admins)
+# ✅ Get Employees (Admin Only)
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsAdminUser])  # ✅ Admin Access Only
+@permission_classes([IsAuthenticated, IsAdminUser])
 def get_employees(request):
     try:
         employees = Employee.objects.all()
@@ -79,10 +66,9 @@ def get_employees(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-# ✅ Get Retailers (Admin Access)
+# ✅ Get Retailers (Admin Only)
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsAdminUser])  # ✅ Admin Only
+@permission_classes([IsAuthenticated, IsAdminUser])
 def get_retailers(request):
     try:
         retailers = Retailer.objects.all()
@@ -93,8 +79,7 @@ def get_retailers(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-# ✅ Get Orders (Admin & Employee Access)
+# ✅ Get Orders (Anyone Logged In)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_orders(request):
@@ -112,10 +97,9 @@ def get_orders(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-# ✅ Get Trucks (Admin Access)
+# ✅ Get Trucks (Admin Only)
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsAdminUser])  # ✅ Admin Only
+@permission_classes([IsAuthenticated, IsAdminUser])
 def get_trucks(request):
     try:
         trucks = Truck.objects.all()
@@ -126,8 +110,7 @@ def get_trucks(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-# ✅ Get Shipments (Admin & Employee Access)
+# ✅ Get Shipments (Anyone Logged In)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_shipments(request):
@@ -140,47 +123,47 @@ def get_shipments(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-# ✅ Allocate Orders (Only Employees)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])  
 def allocate_orders(request):
-    """
-    API to allocate orders based on truck capacity, distance, and product availability.
-    """
     try:
         with transaction.atomic():
-            allocation_result = allocate_shipments(request)  # ✅ Directly pass DRF request
+            allocation_result = allocate_shipments(request)
 
-            if isinstance(allocation_result, Response):  # ✅ Return DRF Response directly
+            if isinstance(allocation_result, Response):
                 return allocation_result
 
+            # ✅ Ensure all product statuses are updated
+            products = Product.objects.all()
+            for product in products:
+                product.save()  # This will call update_status() before saving
+
         return Response(
-            {"error": "Unexpected error in allocation"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            {"message": "Orders allocated and stock status updated successfully"},
+            status=status.HTTP_200_OK,
         )
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-@api_view(['GET'])
-@permission_classes([IsAuthenticated,IsAdminUser])
+
+# ✅ Get Stock Data (Admin Only)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsAdminUser])
 def get_stock_data(request):
-    if not request.user.is_staff:  # Extra check for safety
+    if not request.user.is_staff:
         return Response({"detail": "Access denied. Admins only."}, status=status.HTTP_403_FORBIDDEN)
 
     products = Product.objects.all()
     serializer = ProductSerializer(products, many=True)
     return Response(serializer.data)
 
-
-@api_view(['GET'])
+# ✅ Get Category Stock Data (Accessible by Anyone)
+@api_view(["GET"])
 def category_stock_data(request):
     """
     Returns category names and product count for visualization.
     """
     try:
-        # Use the correct related name to count products in each category
-        categories = Category.objects.annotate(product_count=Count('products'))  # ✅ Fix: 'products' instead of 'product'
+        categories = Category.objects.annotate(product_count=Count('products'))  # ✅ Count products per category
 
         # Serialize the data
         serialized_data = CategorySerializer(categories, many=True).data
@@ -193,6 +176,5 @@ def category_stock_data(request):
             )
 
         return Response({"success": True, "data": serialized_data})
-    
     except Exception as e:
         return Response({"error": str(e)}, status=500)
